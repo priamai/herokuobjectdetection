@@ -1,5 +1,7 @@
+Flask-Bootstrap
 opencv-python
 numpy
 flask
 pillow
 gunicorn
+requests

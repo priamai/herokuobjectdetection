@@ -20,37 +20,70 @@ classNames = {0: 'background',
               80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock',
               86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier', 90: 'toothbrush'}
 
+import logging
+import os
+import urllib.request
+import requests
+
+logging.basicConfig(level=logging.DEBUG)
+
+def DownloadFile(url,filename):
+    local_filename = url.split('/')[-1]
+    r = requests.get(url)
+    with open(filename, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
+    return
 
 class Detector:
-    def __init__(self):
+    def __init__(self,modelname='Faster-RCNN-ResNet-50'):
         global cvNet
-        cvNet = cv.dnn.readNetFromTensorflow('model/frozen_inference_graph.pb',
-                                             'model/ssd_mobilenet_v1_coco_2017_11_17.pbtxt')
+        logging.info('Loading detector with %s' % modelname)
+
+        pb_file = os.path.join('model',modelname+'.pb')
+        pbtxt_file = os.path.join('model', modelname + '.pbtxt')
+
+        if os.path.isfile(pbtxt_file):
+
+            if os.path.isfile(pb_file)==False:
+                logging.info('Downloading ...' + pb_file)
+                url = 'https://www.dropbox.com/s/yj4weum0yb65d7u/Faster-RCNN-ResNet-50.pb?dl=1'
+                DownloadFile(url, pb_file)
+                logging.info('Done' + pb_file)
+            else:
+                cvNet = cv.dnn.readNetFromTensorflow(pb_file,pbtxt_file)
+
+        else:
+            logging.error('Unable to load ...' + pbtxt_file)
 
     def detectObject(self, imName):
         img = cv.cvtColor(numpy.array(imName), cv.COLOR_BGR2RGB)
         cvNet.setInput(cv.dnn.blobFromImage(img, 0.007843, (300, 300), (127.5, 127.5, 127.5), swapRB=True, crop=False))
-        detections = cvNet.forward()
-        cols = img.shape[1]
-        rows = img.shape[0]
 
-        for i in range(detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            if confidence > 0.5:
-                class_id = int(detections[0, 0, i, 1])
+        if cvNet:
+            detections = cvNet.forward()
+            cols = img.shape[1]
+            rows = img.shape[0]
 
-                xLeftBottom = int(detections[0, 0, i, 3] * cols)
-                yLeftBottom = int(detections[0, 0, i, 4] * rows)
-                xRightTop = int(detections[0, 0, i, 5] * cols)
-                yRightTop = int(detections[0, 0, i, 6] * rows)
+            for i in range(detections.shape[2]):
+                confidence = detections[0, 0, i, 2]
+                if confidence > 0.5:
+                    class_id = int(detections[0, 0, i, 1])
 
-                cv.rectangle(img, (xLeftBottom, yLeftBottom), (xRightTop, yRightTop),
-                             (0, 0, 255))
-                if class_id in classNames:
-                    label = classNames[class_id] + ": " + str(confidence)
-                    labelSize, baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                    yLeftBottom = max(yLeftBottom, labelSize[1])
-                    cv.putText(img, label, (xLeftBottom+5, yLeftBottom), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255))
+                    xLeftBottom = int(detections[0, 0, i, 3] * cols)
+                    yLeftBottom = int(detections[0, 0, i, 4] * rows)
+                    xRightTop = int(detections[0, 0, i, 5] * cols)
+                    yRightTop = int(detections[0, 0, i, 6] * rows)
 
-        img = cv.imencode('.jpg', img)[1].tobytes()
+                    cv.rectangle(img, (xLeftBottom, yLeftBottom), (xRightTop, yRightTop),
+                                 (0, 0, 255))
+                    if class_id in classNames:
+                        label = classNames[class_id] + ": " + str(confidence)
+                        labelSize, baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                        yLeftBottom = max(yLeftBottom, labelSize[1])
+                        cv.putText(img, label, (xLeftBottom+5, yLeftBottom), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255))
+
+            img = cv.imencode('.jpg', img)[1].tobytes()
+
         return img
