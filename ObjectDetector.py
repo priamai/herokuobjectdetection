@@ -47,16 +47,15 @@ class Detector:
         if os.path.isfile(pbtxt_file):
 
             if os.path.isfile(pb_file)==False:
-                logging.info('Downloading ...' + pb_file)
+                logging.info('Downloading ' + pb_file)
                 url = 'https://www.dropbox.com/s/yj4weum0yb65d7u/Faster-RCNN-ResNet-50.pb?dl=1'
                 DownloadFile(url, pb_file)
-                logging.info('Done' + pb_file)
-            else:
-                self.cvNet = cv.dnn.readNetFromTensorflow(pb_file,pbtxt_file)
+                logging.info('Done ' + pb_file)
 
+            self.cvNet = cv.dnn.readNetFromTensorflow(pb_file,pbtxt_file)
         else:
             self.cvNet = None
-            logging.error('Unable to load ...' + pbtxt_file)
+            logging.error('Unable to load ' + pbtxt_file)
 
     def detectObject(self, imName):
         img = cv.cvtColor(numpy.array(imName), cv.COLOR_BGR2RGB)
