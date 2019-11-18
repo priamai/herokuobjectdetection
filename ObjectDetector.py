@@ -38,7 +38,7 @@ def DownloadFile(url,filename):
 
 class Detector:
     def __init__(self,modelname='Faster-RCNN-ResNet-50'):
-        global cvNet
+
         logging.info('Loading detector with %s' % modelname)
 
         pb_file = os.path.join('model',modelname+'.pb')
@@ -52,17 +52,20 @@ class Detector:
                 DownloadFile(url, pb_file)
                 logging.info('Done' + pb_file)
             else:
-                cvNet = cv.dnn.readNetFromTensorflow(pb_file,pbtxt_file)
+                self.cvNet = cv.dnn.readNetFromTensorflow(pb_file,pbtxt_file)
 
         else:
+            self.cvNet = None
             logging.error('Unable to load ...' + pbtxt_file)
 
     def detectObject(self, imName):
         img = cv.cvtColor(numpy.array(imName), cv.COLOR_BGR2RGB)
-        cvNet.setInput(cv.dnn.blobFromImage(img, 0.007843, (300, 300), (127.5, 127.5, 127.5), swapRB=True, crop=False))
 
-        if cvNet:
-            detections = cvNet.forward()
+
+        if self.cvNet:
+            self.cvNet.setInput(
+                cv.dnn.blobFromImage(img, 0.007843, (300, 300), (127.5, 127.5, 127.5), swapRB=True, crop=False))
+            detections = self.cvNet.forward()
             cols = img.shape[1]
             rows = img.shape[0]
 
